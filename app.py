@@ -1,55 +1,40 @@
-from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
+from flask import Flask, request, jsonify, send_from_directory
 import os
 
 app = Flask(__name__)
 
-# === Tải từ khóa và trả lời từ file Excel ===
 def load_keywords():
-    df = pd.read_excel("tu_khoa.xlsx")
+    df = pd.read_excel("tu_khoa.xlsx", engine='openpyxl')
     df.columns = ["keyword", "answer"]
-    return dict(zip(df["keyword"], df["answer"]))
+    return dict(zip(df["keyword"].str.lower(), df["answer"]))
 
 keywords = load_keywords()
 
-# === Route xác minh webhook của Zalo (GET hoặc POST) ===
 @app.route("/", methods=["GET", "POST"])
 def index():
-    if request.method == "GET":
-        return "Zalo OA Chatbot is running with webhook verification!"
-    elif request.method == "POST":
-        return jsonify({"status": "ok"})  # Để Zalo xác thực webhook
+    if request.method == "POST":
+        return jsonify({"status": "ok"})
+    return "Server is ready"
 
-# === Trả file xác minh (nếu cần đặt file .html để xác thực Zalo) ===
-@app.route('/zalo_verifierSlgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html')
-def verify():
-    return send_from_directory('.', 'zalo_verifierSlgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html')
-
-# === Webhook xử lý tin nhắn người dùng ===
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
-    try:
-        user_id = data['data']['user_id']
-        message = data['data']['message']
+    if not data or 'data' not in data:
+        return jsonify({"status": "invalid"}), 400
+    user_id = data['data']['user_id']
+    message = data['data']['message'].lower()
+    reply = "Xin lỗi, mình chưa hiểu yêu cầu."
 
-        # Trả lời mặc định
-        response = "Xin lỗi, tôi chưa hiểu yêu cầu."
+    for kw, ans in keywords.items():
+        if kw in message:
+            reply = ans
+            break
 
-        # Tìm từ khóa phù hợp
-        for keyword in keywords:
-            if keyword.lower() in message.lower():
-                response = keywords[keyword]
-                break
-
-        print(f"Tin nhắn từ {user_id}: {message}")
-        print(f"Trả lời: {response}")
-
-        return jsonify({"status": "ok", "reply": response})
-    except Exception as e:
-        return jsonify({"status": "error", "detail": str(e)}), 400
-
-# === Chạy ứng dụng Flask ===
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    requests.post("https://openapi.zalo.me/v2.0/oa/message",
+                  headers={
+                    "access_token": os.getenv("ZALO_OA_ACCESS_TOKEN"),
+                    "Content-Type": "application/json"
+                  },
+                  json={"recipient": {"user_id": user_id}, "message": {"text": reply}})
+    return jsonify({"status": "ok"}), 200
