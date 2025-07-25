@@ -37,6 +37,10 @@ def webhook():
     except Exception as e:
         print("Lỗi:", e)
         return jsonify({"status": "error", "detail": str(e)}), 400
+from flask import send_from_directory
+@app.route('/zalo_verifierSIgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html')
+def verify_file():
+    return send_from_directory('.', 'zalo_verifierSIgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html')
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
