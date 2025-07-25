@@ -1,47 +1,46 @@
-from flask import Flask, request, jsonify
+
+from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
-import os
 
 app = Flask(__name__)
 
-# Load từ khóa từ file Excel
-def load_keywords():
-    df = pd.read_excel("tu_khoa.xlsx")
-    df.columns = ["keyword", "answer"]
-    return dict(zip(df["keyword"], df["answer"]))
+# Tải dữ liệu từ Excel
+df = pd.read_excel("data.xlsx")  # Đảm bảo file này nằm cùng thư mục với app.py
 
-keywords = load_keywords()
+# Đọc file Excel thành từ điển từ khóa và phản hồi
+response_dict = dict(zip(df["Từ khóa"], df["Trả lời"]))
 
-@app.route("/", methods=["GET"])
-def index():
-    return "Zalo OA Chatbot is running!"
+@app.route('/', methods=['GET'])
+def home():
+    return 'Chatbot Zalo đang hoạt động!'
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json()
-    try:
-        user_id = data['data']['user_id']
-        message = data['data']['message']
-
-        # Xử lý tìm từ khóa phù hợp
-        response = "Xin lỗi, tôi chưa hiểu yêu cầu."
-        for keyword in keywords:
-            if keyword.lower() in message.lower():
-                response = keywords[keyword]
-                break
-
-        print(f"Tin nhắn từ {user_id}: {message}")
-        print(f"Trả lời: {response}")
-
-        return jsonify({"status": "ok", "reply": response})
-    except Exception as e:
-        print("Lỗi:", e)
-        return jsonify({"status": "error", "detail": str(e)}), 400
-from flask import send_from_directory
-@app.route('/zalo_verifierSIgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html')
-def verify_file():
+@app.route('/zalo_verifierSIgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html', methods=['GET'])
+def verify_domain():
     return send_from_directory('.', 'zalo_verifierSIgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html')
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.json
+    try:
+        user_id = data['sender']['id']
+        message = data['message']['text']
+
+        response = None
+        for keyword in response_dict:
+            if keyword.lower() in message.lower():
+                response = response_dict[keyword]
+                break
+
+        if response:
+            print(f"Gửi phản hồi tới {user_id}: {response}")
+        else:
+            print(f"Không tìm thấy phản hồi cho: {message}")
+
+        return jsonify({"status": "ok"}), 200
+
+    except Exception as e:
+        print("Lỗi webhook:", e)
+        return jsonify({"status": "error"}), 400
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
