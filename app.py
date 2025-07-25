@@ -1,55 +1,51 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request
 import pandas as pd
-import os
+import requests
 
 app = Flask(__name__)
 
-# === Tải từ khóa và trả lời từ file Excel ===
-def load_keywords():
-    df = pd.read_excel("tu_khoa.xlsx")
-    df.columns = ["keyword", "answer"]
-    return dict(zip(df["keyword"], df["answer"]))
+OA_ACCESS_TOKEN = "YOUR_ACCESS_TOKEN"
+ZALO_API_URL = "https://openapi.zalo.me/v3.0/oa/message"
 
-keywords = load_keywords()
+# Load Excel
+data_wifi = pd.read_excel("zalo_data.xlsx", sheet_name="wifi")
 
-# === Route xác minh webhook của Zalo (GET hoặc POST) ===
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "GET":
-        return "Zalo OA Chatbot is running with webhook verification!"
-    elif request.method == "POST":
-        return jsonify({"status": "ok"})  # Để Zalo xác thực webhook
+def reply_to_user(user_id, message):
+    headers = {
+        "Content-Type": "application/json",
+        "access_token": OA_ACCESS_TOKEN
+    }
+    payload = {
+        "recipient": {"user_id": user_id},
+        "message": {"text": message}
+    }
+    response = requests.post(ZALO_API_URL, headers=headers, json=payload)
+    print("==> Đã gửi phản hồi:", response.status_code, response.text)
 
-# === Trả file xác minh (nếu cần đặt file .html để xác thực Zalo) ===
-@app.route('/zalo_verifierSlgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html')
-def verify():
-    return send_from_directory('.', 'zalo_verifierSlgK3gJy7Gf4pCmNcE5vEagNeoMcuNHwCJ0q.html')
-
-# === Webhook xử lý tin nhắn người dùng ===
-@app.route("/webhook", methods=["POST"])
+@app.route("/", methods=["POST"])
 def webhook():
-    data = request.get_json()
     try:
-        user_id = data['data']['user_id']
-        message = data['data']['message']
+        data = request.get_json()
+        print("==> Nhận JSON từ Zalo:", data)
 
-        # Trả lời mặc định
-        response = "Xin lỗi, tôi chưa hiểu yêu cầu."
+        if data.get("event_name") == "user_send_text":
+            user_id = data["sender"]["id"]
+            user_msg = data["message"]["text"].strip().lower()
+            print(f"==> Tin nhắn từ {user_id}: {user_msg}")
 
-        # Tìm từ khóa phù hợp
-        for keyword in keywords:
-            if keyword.lower() in message.lower():
-                response = keywords[keyword]
-                break
+            matched = data_wifi[data_wifi['keyword'].str.lower() == user_msg]
 
-        print(f"Tin nhắn từ {user_id}: {message}")
-        print(f"Trả lời: {response}")
+            if not matched.empty:
+                response = matched.iloc[0]['response']
+            else:
+                response = "Xin lỗi, tôi chưa hiểu câu hỏi của bạn."
 
-        return jsonify({"status": "ok", "reply": response})
+            reply_to_user(user_id, response)
+
+        return "OK", 200
     except Exception as e:
-        return jsonify({"status": "error", "detail": str(e)}), 400
+        print("==> Lỗi xử lý webhook:", str(e))
+        return "Error", 500
 
-# === Chạy ứng dụng Flask ===
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000, debug=True)
