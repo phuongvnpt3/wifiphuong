@@ -18,7 +18,7 @@ logger = logging.getLogger('zalo-chatbot')
 # ================= CẤU HÌNH ZALO OA =================
 OA_ACCESS_TOKEN = "qpzm0f4wCd_GE7m1bpm_VDCySWQH940kq2PN4lT551V8E2GCxMKs9_y973V0Hm8KWGKgCxPq6XwkTZW8x0Xw6Ai6LpUENLiAd5zpTe4cO7oHFLnRkcPbO-G8SLBX4pajmKSG0-Wm6dxKJLTjoKjqNebDN5--7HvbZ4eMLAyLMYko56imhH5u6AjCH1c02qmgb5XnKjCnE7_sR39alIzwQePiJdA2ObHskYqMU9bh3mYWEqCrfa1zDvm6QmY2O5yOXm9XEy9WQWBvCYKanLic8EzK7mtlLITnpZiEVFP1FLpLJnH7wZiDVTPy6sxs9IDlzILg7zCa9JxZNYyTlG0rPwTU81cI2oyeXKaHA899A4oM6ZjWec0BVQ0K15Ea3mzNvreZHlC5FYB2P7LQuZStOVrM7M1BMNCsUqcK9pfz"
 OA_SECRET_KEY = "RXK8PdDhGkfCiFbVQXgA"
-ZALO_API_URL = "https://openapi.zalo.me/v3.0/oa/message"
+ZALO_API_URL = "https://openapi.zalo.me/v2.0/oa/message"
 # =====================================================
 
 # Đọc dữ liệu từ khóa
